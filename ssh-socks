@@ -1,0 +1,42 @@
+#!/bin/bash
+# Ardavan Hashemzadeh
+# September 11 2017
+# Establish an SSH tunnel then configure socks proxy
+# Undo proxy settings afterwards
+
+LOCAL_PORT=8080
+LOCAL_RANGE="192.168.1.0/24"
+REMOTE_USER="TheUsername"
+REMOTE_HOST="TheRemoteHostFQDN"
+
+# Function to store current proxy settings into variables
+get_socks () {
+  PROXY_MODE=`gsettings get org.gnome.system.proxy mode`
+  SOCKS_PORT=`gsettings get org.gnome.system.proxy.socks port`
+  SOCKS_HOST=`gsettings get org.gnome.system.proxy.socks host`
+  IGNORE_HOSTS=`gsettings get org.gnome.system.proxy ignore-hosts`
+}
+
+# Function to set proxy settings:
+set_socks () {
+  if [ "$1" ]; then gsettings set org.gnome.system.proxy mode "$1"; fi
+  if [ "$2" ]; then gsettings set org.gnome.system.proxy.socks port "$2"; fi
+  if [ "$2" ]; then gsettings set org.gnome.system.proxy.socks host "$3"; fi
+  if [ "$2" ]; then gsettings set org.gnome.system.proxy ignore-hosts "$4"; fi
+}
+
+echo "Storing current proxy settings..."
+get_socks
+
+echo "Reconfiguring proxy settings..."
+set_socks "manual" "${LOCAL_PORT}" "localhost" "['localhost', '127.0.0.0/8', '${LOCAL_RANGE}', '::1']"
+
+echo "Establish SSH connection with port forwarding..."
+echo "Press CTRL+C to cancel, closing this window will leave break proxy settings"
+echo "You can disable proxy settings by typeing the following command:"
+echo "gsettings set org.gnome.system.proxy mode 'none'"
+
+echo `ssh -D ${LOCAL_PORT} -C -q -N ${REMOTE_USER}@${REMOTE_HOST}`
+
+echo "Reconfiguring proxy settings to original state..."
+set_socks "${PROXY_MODE}" "${SOCKS_PORT}" "${SOCKS_HOST}" "${IGNORE_HOSTS}"

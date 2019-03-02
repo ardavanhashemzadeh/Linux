@@ -1,0 +1,41 @@
+# Ardavan Hashemzadeh
+# July 5 2017
+# Updated September 7th 2017 to latest StrongSwan release (5.6.0 as of this moment) 
+# Script to create build environment
+# then build strongswan and its network manager plugin from source
+# Run latest version of the script directly from github:
+# sudo wget -qO- https://raw.github.com/ardavanhashemzadeh/scripts/master/ss-nm | bash
+
+# Store the current directory then create a temporary working directory and navigate to it
+StartDir=`pwd`
+mkdir ~/rdtmp/
+cd ~/rdtmp/
+
+# Install prerequirements
+apt-get -y update
+apt-get -y install libssl-dev network-manager-dev libnm-glib-vpn-dev libnm-gtk-dev libnma-dev libgtk-3-dev libsecret-1-dev gnome-common
+ 
+# Download and extract the strongswan sourcecode
+wget -qO- http://download.strongswan.org/strongswan.tar.gz | tar xz
+cd `find -maxdepth 1 -type d -name "strongswan*"`
+ 
+# Build strongswan
+./configure --sysconfdir=/etc --prefix=/usr --libexecdir=/usr/lib \
+   --disable-aes --disable-des --disable-md5 --disable-sha1 --disable-sha2 \
+   --disable-fips-prf --disable-gmp --enable-openssl --enable-nm --enable-agent \
+   --enable-eap-gtc --enable-eap-md5 --enable-eap-mschapv2 --enable-eap-identity
+make
+make install
+ 
+# Download and extract the strongswan network manager plugin sourcecode
+wget https://download.strongswan.org/NetworkManager/NetworkManager-strongswan-1.4.2.tar.bz2 | tar xj
+cd NetworkManager-strongswan-1.4.2
+ 
+# Build the plugin
+./configure --sysconfdir=/etc --prefix=/usr --with-charon=/usr/lib/ipsec/charon-nm
+make
+make install
+
+# Cleanup
+cd "$StartDir"
+# rm -rf ~/rdtmp

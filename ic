@@ -1,0 +1,22 @@
+#!/bin/bash
+# Ardavan Hashemzadeh
+# Published October 16 2017
+# Partial notes: script to insert commercial like content into movies
+
+# Remove spaces from filenames:
+# find -name “* *” -type f | rename ‘s/ /_/g’
+# Split into 10 minute files named consecutively:
+# for f in `ls -p | grep -v /` ; do python ffmpeg-split.py f “$f” -s 600; done
+# Create a folder named Links and populate it with hardlinks
+# mkdir Links ; ls -p | grep -v / | cat -n | while read n f; do ln -P “$f” “Lniks/$n”; done
+
+count =1
+for movie in `ls -p | grep -v /`
+do
+if ! [ -e “Commercials/Links/$count ]
+then
+count=1
+fi
+ln -P “Commercials/Links/$count” “$movie.commercial.mov”
+let “count++”
+done

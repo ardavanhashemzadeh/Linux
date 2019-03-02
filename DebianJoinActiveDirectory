@@ -1,0 +1,191 @@
+http://www.alandmoore.com/blog/2015/05/06/joining-debian-8-to-active-directory/
+JOINING DEBIAN 8 TO ACTIVE DIRECTORY
+
+May 6, 2015 , 66 Comments , Alan
+Joining a GNU/Linux machine to a Microsoft Active Directory has been possible for years, but it’s always been a bit of a science project that involved touching half-a-dozen obscure config files and usually resulted in me getting completely locked out of the machine. Various commercial packages such as Likewise and Centrify aimed to smooth out the process, but they weren’t universally accessible across distros, and often produced inconsistent results.
+
+After upgrading a system to Debian 8, I noticed a new option for joining the domain, courtesy of the folks at RedHat: realmd. Realmd puports to make joining an Active Directory domain dead simple. How does it do?
+
+
+What means this “join”?
+
+When I think of “joining a domain”, my expectation is that I should be able to login to my system as a domain user, have a computer account created in the directory, have a home directory created for me, and potentially have some appropriate permissions granted to me (e.g., sudo privileges for domain admins). Apparently that’s not what everyone means, including the developers of realmd.
+
+realmd will get us part of the way there, but unfortunately we’ll still have to do some config file twiddling to get the last nine yards.
+Pre-Setup
+
+Sanity checks
+
+Make sure you have Debian 8 installed.
+Make sure your machine is on the network, of course, and that you have a domain admin account ready (or one that can join machines to the domain).
+Make sure your DNS server is pointing to a DNS server that knows about AD. We have some pre-AD ones that don’t, and I ran into trouble with this. Most people probably don’t need to worry about this.
+I use sudo in these examples because I prefer it. If you don’t, make sure you’re root and omit the “sudo” whenever you see it.
+Installing packages
+
+Realmd is easy enough to install using aptitude:
+
+1
+sudo aptitude install realmd
+Ideally, realmd is meant to install other packages required to join your domain (be it Active Directory, openldap, or some other supported directory) automatically when you attempt to join.
+
+In practice, I found this unreliable. So for my AD, I also installed adcli and sssd manually. And since time synchronization is critical for Active Directory, I also installed ntp.
+
+1
+sudo aptitude install ntp adcli sssd
+Some fixes
+
+For some reason, the first attempts I made to join a domain failed because a certain samba-related directory didn’t exist. I don’t know if this is a bug in realmd, or something to do with the way it installs dependencies, but simply creating the directory fixes this:
+
+1
+sudo mkdir -p /var/lib/samba/private
+Also, sssd was not configured to start at boot for some reason, so this also needed to be done.
+
+1
+sudo systemctl enable sssd
+sssd won’t actually start until it has a config file, which realmd will generate for us.
+Join up
+
+At this point, you should be able to get some information about your domain with this command:
+
+1
+sudo realm discover my-domain.local
+Obviously, replace “my-domain.local” with your AD domain. You should see some output that looks like this:
+
+1
+2
+3
+4
+5
+6
+7
+my-domain.local
+  type: kerberos
+  realm-name: MY-DOMAIN.LOCAL
+  domain-name: my-domain.local
+  configured: no
+  server-software: active-directory
+  client-software: sssd
+If this looks good, we can join the domain:
+
+1
+sudo realm join --user=joe.smith my-domain.local
+This assumes joe.smith is a domain admin. Use whatever domain admin account you have. You’ll be prompted for a password, of course, and then the magic happens.
+
+If all goes well, your machine should be configured to authenticate users to your domain at this point. You may need to start up sssd:
+
+1
+sudo systemctl start sssd
+We can verify this by trying to get a password entry for a domain user:
+
+1
+sudo getent passwd joe.smith@my-domain.local
+If that returns something that looks like a line from /etc/passwd for your joe.smith user, you’re in! Otherwise, something went wrong.
+Vital finishing touches
+
+You can authenticate users at this point, but we’re not quite done. Two more tweaks are necessary here:
+You want a home directory?
+
+By default, Debian isn’t going to make a home directory whenever the user logs in. We need to fix this, because without this you can’t actually log in to the computer. Fortunately, it takes only one line in one config file to acheive this:
+
+1
+echo "session required pam_mkhomedir.so skel=/etc/skel/ umask=0022" | sudo tee -a /etc/pam.d/common-session
+This tells PAM to create a home directory for any authenticating user if they don’t have one, and to copy the default contents from /etc/skel. You can change that to something else if you want a different default home directory for domain users.
+Local admin privileges
+
+Typically on a domain, domain admins would get local admin rights so they can do admin things on computers. Makes sense.
+
+To get this in our Debian setup, we need to make sure our sudo supports this, and then configure it.
+
+1
+2
+sudo aptitude install libsss-sudo
+echo "%domain\ admins@my-domain.local ALL=(ALL) ALL" | sudo tee -a /etc/sudoers.d/domain_admins
+The first line installs a library to allow sssd and sudo to talk. The second adds a directive to sudo to allow domain admins at my-domain.local sudo privileges. (Copy-pasters take note: you need to edit that command with your domain name.)
+Prepare for lift-off
+
+Might as well give it a good reboot at this point just for the heck of it, but it may not actually be required (just a habit from Windows, I guess).
+
+At this point you should be able to log in as any domain user, and domain admins should be able to sudo. Congrats!
+
+For the completely lazy, I’ve thrown this script together that should do the job:
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+#!/bin/bash
+ 
+# This script should join Debian Jessie (8) to an Active Directory domain.
+echo "Please authenticate with your sudo password"
+sudo -v
+ 
+if ! $(sudo which realmd 2>/dev/null); then
+    sudo aptitude install realmd adcli sssd
+fi
+ 
+if ! $(sudo which ntpd 2>/dev/null); then
+    sudo aptitude install ntp
+fi
+ 
+sudo mkdir -p /var/lib/samba/private
+ 
+echo "Please enter the domain you wish to join: "
+read DOMAIN
+ 
+echo "Please enter a domain admin login to use: "
+read ADMIN
+ 
+sudo realm join --user=$ADMIN $DOMAIN
+ 
+if [ $? -ne 0 ]; then
+    echo "AD join failed.  Please run 'journalctl -xn' to determine why."
+    exit 1
+fi
+ 
+sudo systemctl enable sssd
+sudo systemctl start sssd
+ 
+echo "session required pam_mkhomedir.so skel=/etc/skel/ umask=0022" | sudo tee -a /etc/pam.d/common-session
+ 
+# configure sudo
+sudo aptitude install libsss-sudo
+ 
+echo "%domain\ admins@$DOMAIN ALL=(ALL) ALL" | sudo tee -a /etc/sudoers.d/domain_admins
+ 
+echo "The computer is joined to the domain.  Please reboo

@@ -1,0 +1,14 @@
+@ECHO OFF
+REM Ardavan Hashemzadeh
+REM September 11 2017
+REM Remove Terminal Server Grace Period
+REM key in registry and restart services
+
+FOR /f %%r IN ('REG QUERY "HKLM\System\CurrentControlSet\Control\Terminal Server\RCM\GracePeriod" /t REG_BINARY ^| FIND "REG_BINARY"') DO (
+REG DELETE "HKLM\System\CurrentControlSet\Control\Terminal Server\RCM\GracePeriod" /v "%%r" /f
+)
+
+FOR /f "tokens=* delims= " %%s IN ('NET START ^| FIND "Remote Desktop"') DO (
+NET STOP "%%s" /y
+NET START "%%s"
+)

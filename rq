@@ -1,0 +1,13 @@
+#! /bin/bash
+# Ardavan Hashemzadeh
+# September 29 2017
+# Remove all dynamic agents from queues
+
+export PATH=$PATH:/usr/sbin/
+
+asterisk -rx "queue show" | awk '/^[0-9]/{queue=$1;}
+(/dynamic/&&match($0,/Local\/[0-9]+@from-queue\/n/))||/dynamic/{
+if (substr($0,RSTART,5)=="Local") member=substr($0,RSTART,RLENGTH);
+else if (substr($1,1,3)=="SIP") member=$1;
+if (member!=""){astcmd="queue remove member " member " from " queue;syscmd="asterisk -rx \"" astcmd "\"";system(syscmd);}
+}'
