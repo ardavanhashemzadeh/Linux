@@ -23,7 +23,7 @@ while IFS=, read id user host dumpfolder databases ; do
                 /usr/local/mariadb10/bin/./mysql -e 'FLUSH TABLES WITH READ LOCK; \
                         SET GLOBAL read_only=ON;SELECT NOW(), @@read_only, @@gtid_current_pos, @@gtid_binlog_pos, @@gtid_slave_pos\G \
                         SELECT NOW();SHOW MASTER STATUS\G' &>> $id-replog; \
-                /usr/local/mariadb10/bin/./mysqldump --max-allowed-packet=512m -u$user $databases \
+                /usr/local/mariadb10/bin/./mysqldump --max-allowed-packet=512m $databases \
                         > $id-$timestamp.sql 2>> $id-replog; \
                 /usr/local/mariadb10/bin/./mysql -e 'SET GLOBAL read_only=OFF; UNLOCK TABLES; SELECT NOW(), @@read_only\G' &>> $id-replog; \
                 tar -cvzf $id-$timestamp.tgz $id-replog $id-$timestamp.sql &>> $id-ziplog"
