@@ -13,6 +13,7 @@ cr,root,192.168.1.2,/OpenDentImages/share,--databases mysql"
 
 timestamp=`date -d "today" +"%Y%m%d%H%M%S"`
 
+mkdir $timestamp; cd $timestamp
 while IFS=, read id user host dumpfolder databases ; do
         remotecommand="cd /; cd $dumpfolder; \
                 /usr/local/mariadb10/bin/./mysql -e 'FLUSH TABLES WITH READ LOCK; \
