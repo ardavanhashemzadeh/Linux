@@ -4,8 +4,8 @@
 # MultiDump Tool
 # Prior setup:
 # 0. Ensure prerequisites are met (bash, screen, ssh, tar, gzip)
-# 1. setup passwordless authentication (ssh and sql)
-# 2. ssh username = sql username
+# 1. ssh username = sql username
+# 2. setup passwordless authentication (ssh and sql)
 
 # id,user,host,dumpfolder,databases
 mylist="\
