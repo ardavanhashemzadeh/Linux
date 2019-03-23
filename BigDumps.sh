@@ -10,7 +10,7 @@ mylist="\
 id,user,host,dumpfolder,--databases database1 database2 database3"
 
 while IFS=, read id user host dumpfolder databases; do
-	screen -dmS `date -d "today" +"%Y%m%d%H%M%S"` \
+	screen -dmS $id \
 	ssh $user@$host bash -c "cd $dumpfolder;  \
     /usr/local/mariadb10/bin/./mysql -e '\
       FLUSH TABLES WITH READ LOCK; SET GLOBAL read_only=ON; \
