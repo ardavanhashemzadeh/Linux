@@ -1,7 +1,7 @@
 #!/bin/bash
 # Ardavan Hashemzadeh
 # March 8 2019
-# Script the dumping of several dbs
+# Depricated by the other one
 
 timestamp=`date -d "today" +"%Y%m%d%H%M%S"`
 
