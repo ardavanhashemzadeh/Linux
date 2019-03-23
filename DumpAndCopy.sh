@@ -1,10 +1,10 @@
 #!/bin/bash
+# Ardavan Hashemzadeh
 
 timestamp=`date -d "today" +"%Y%m%d%H%M%S"`
 
 myvarcsv="id,user,host,/dumpfolder,--databases database1 database2
 id2,user2,host2,/dumpfolder2,--databases database2"
-
 
 while IFS=, read id user host dumpfolder databases ; do
         remotecommand="gotodmpfld() { cd $dumpfolder; } ; gotodmpfld; \
